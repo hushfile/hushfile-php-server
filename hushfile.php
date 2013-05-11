@@ -80,7 +80,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		echo json_encode(array("status" => "missing fileid"));
 	};
 
-	switch($_SERVER["REQUEST_URI"]) {
+	switch($url['path']) {
 		case "/api/exists":
 			// fileid is valid if we got this far
 			echo json_encode(array("fileid" => $fileid, "exists" => true));
