@@ -71,9 +71,9 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	// check if fileid is in the params
 	if(isset($params['fileid'])) {
 		//check if fileid exists and is valid
-		if (!file_exists($datapath.$fileid)) {
+		if (!file_exists($datapath.$params['fileid'])) {
 			header("Status: 404 Not Found");
-			echo json_encode(array("fileid" => $fileid, "exists" => false));
+			echo json_encode(array("fileid" => $params['fileid'], "exists" => false));
 		};
 	} else {
 		header("Status: 400 Bad Request");
@@ -83,12 +83,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	switch($url['path']) {
 		case "/api/exists":
 			// fileid is valid if we got this far
-			echo json_encode(array("fileid" => $fileid, "exists" => true));
+			echo json_encode(array("fileid" => $params['fileid'], "exists" => true));
 		break;
 		
 		case "/api/file":
 			//download cryptofile.dat file
-			$file = $datapath.$fileid."/cryptofile.dat";
+			$file = $datapath.$params['fileid']."/cryptofile.dat";
 			header("Content-Length: " . filesize($file));
 			header("Content-Type: text/plain");
 			flush();
@@ -102,7 +102,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		case "/api/metadata":
 			//download metadata.dat file
-			$file = $datapath.$fileid."/metadata.dat";
+			$file = $datapath.$params['fileid']."/metadata.dat";
 			header("Content-Length: " . filesize($file));
 			header("Content-Type: text/plain");
 			flush();
@@ -111,7 +111,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		case "/api/delete":
 			//get deletepassword from serverdata.json
-			$file = $datapath.$fileid."/serverdata.json";
+			$file = $datapath.$params['fileid']."/serverdata.json";
 			$fh = fopen($file, 'r');
 			$serverdata = fread($fh, filesize($file));
 			fclose($fh);
@@ -120,32 +120,32 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			//check if passwords match
 			if($params['deletepassword'] == $serverdata['deletepassword']) {
 				//password valid! delete stuff
-				unlink($datapath.$fileid."/serverdata.json");
-				unlink($datapath.$fileid."/metadata.dat");
-				unlink($datapath.$fileid."/cryptofile.dat");
-				rmdir($datapath.$fileid);
-				echo json_encode(array("fileid" => $fileid, "deleted" => true));
+				unlink($datapath.$params['fileid']."/serverdata.json");
+				unlink($datapath.$params['fileid']."/metadata.dat");
+				unlink($datapath.$params['fileid']."/cryptofile.dat");
+				rmdir($datapath.$params['fileid']);
+				echo json_encode(array("fileid" => $params['fileid'], "deleted" => true));
 			} else {
 				//incorrect password
 				header("Status: 401 Unauthorized");
-				echo json_encode(array("fileid" => $fileid, "deleted" => false));
+				echo json_encode(array("fileid" => $params['fileid'], "deleted" => false));
 			};
 		break;
 		
 		case "/api/ip":
 			//return the ip that uploaded this file
-			$file = $datapath.$fileid."/serverdata.json";
+			$file = $datapath.$params['fileid']."/serverdata.json";
 			$fh = fopen($file, 'r');
 			$serverdata = fread($fh, filesize($file));
 			fclose($fh);
 			$serverdata = json_decode($serverdata,true);
-			echo json_encode(array("fileid" => $fileid, "uploadip" => $serverdata['clientip']));
+			echo json_encode(array("fileid" => $params['fileid'], "uploadip" => $serverdata['clientip']));
 		break;
 		
 		default:
 			// invalid command, show error page
 			header("Status: 400 Bad Request");
-			echo json_encode(array("fileid" => $fileid, "status" => "bad request"));
+			echo json_encode(array("fileid" => $params['fileid'], "status" => "bad request"));
 		break;
 	};
 };
