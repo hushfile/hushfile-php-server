@@ -1,5 +1,5 @@
 <?php
-$datapath = "/usr/local/www/filedata/";
+$config = json_decode(file_get_contents('config.json'));
 
 function get_uniqid() {
 	$fileid = uniqid();
@@ -15,12 +15,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['deletepassword'])) {
 		// first get a new unique ID for this file
 		$fileid = get_uniqid();
-		$cryptofile = $datapath.$fileid."/cryptofile.dat";
-		$metadatafile = $datapath.$fileid."/metadata.dat";
-		$serverdatafile = $datapath.$fileid."/serverdata.json";
+		$cryptofile = $config->data_path.$fileid."/cryptofile.dat";
+		$metadatafile = $config->data_path.$fileid."/metadata.dat";
+		$serverdatafile = $config->data_path.$fileid."/serverdata.json";
 		
 		// create folder for this file
-		mkdir($datapath.$fileid);
+		mkdir($config->data_path.$fileid);
 
 		// write encrypted file
 		$fh = fopen($cryptofile, 'w') or die(json_encode(array("status" => "unable to write cryptofile", "fileid" => "")));
@@ -42,12 +42,14 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		fclose($fh);
 
 		// send email
-		$to = "thomas@gibfest.dk";
-		$subject = "new file uploaded to hushfile.it";
-		$message = "new file uploaded to hushfile.it: http://hushfile.it/" . $fileid;
-		$from = "upload@hushfile.it";
-		$headers = "From:" . $from;
-		mail($to,$subject,$message,$headers);
+    if ($config->admin->send_email === true) {
+      $to = "{$config->admin->name} <{$config->admin->email}>";
+      $subject = "new file uploaded to hushfile.it";
+      $message = "new file uploaded to hushfile.it: http://hushfile.it/" . $fileid;
+      $from = $config->email_sender;
+      $headers = "From:" . $from;
+      mail($to,$subject,$message,$headers);
+    }
 		
 		// encode json reply
 		echo json_encode(array("status" => "ok", "fileid" => $fileid));
@@ -71,7 +73,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	// check if fileid is in the params
 	if(isset($params['fileid'])) {
 		//check if fileid exists and is valid
-		if (!file_exists($datapath.$params['fileid'])) {
+		if (!file_exists($config->data_path.$params['fileid'])) {
 			header("Status: 404 Not Found");
 			echo json_encode(array("fileid" => $params['fileid'], "exists" => false));
 		};
@@ -88,7 +90,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		case "/api/file":
 			//download cryptofile.dat file
-			$file = $datapath.$params['fileid']."/cryptofile.dat";
+			$file = $config->data_path.$params['fileid']."/cryptofile.dat";
 			header("Content-Length: " . filesize($file));
 			header("Content-Type: text/plain");
 			flush();
@@ -102,7 +104,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		case "/api/metadata":
 			//download metadata.dat file
-			$file = $datapath.$params['fileid']."/metadata.dat";
+			$file = $config->data_path.$params['fileid']."/metadata.dat";
 			header("Content-Length: " . filesize($file));
 			header("Content-Type: text/plain");
 			flush();
@@ -111,7 +113,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		case "/api/delete":
 			//get deletepassword from serverdata.json
-			$file = $datapath.$params['fileid']."/serverdata.json";
+			$file = $config->data_path.$params['fileid']."/serverdata.json";
 			$fh = fopen($file, 'r');
 			$serverdata = fread($fh, filesize($file));
 			fclose($fh);
@@ -120,10 +122,10 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			//check if passwords match
 			if($params['deletepassword'] == $serverdata['deletepassword']) {
 				//password valid! delete stuff
-				unlink($datapath.$params['fileid']."/serverdata.json");
-				unlink($datapath.$params['fileid']."/metadata.dat");
-				unlink($datapath.$params['fileid']."/cryptofile.dat");
-				rmdir($datapath.$params['fileid']);
+				unlink($config->data_path.$params['fileid']."/serverdata.json");
+				unlink($config->data_path.$params['fileid']."/metadata.dat");
+				unlink($config->data_path.$params['fileid']."/cryptofile.dat");
+				rmdir($config->data_path.$params['fileid']);
 				echo json_encode(array("fileid" => $params['fileid'], "deleted" => true));
 			} else {
 				//incorrect password
@@ -134,7 +136,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		case "/api/ip":
 			//return the ip that uploaded this file
-			$file = $datapath.$params['fileid']."/serverdata.json";
+			$file = $config->data_path.$params['fileid']."/serverdata.json";
 			$fh = fopen($file, 'r');
 			$serverdata = fread($fh, filesize($file));
 			fclose($fh);
