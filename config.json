@@ -1,0 +1,9 @@
+{
+  "data_path": "/usr/local/www/filedata/",
+  "email_sender": "hushfile@example.com",
+  "admin": {
+    "name": "John Doe",
+    "email": "jdoe@example.com",
+    "send_email": false
+  }
+}
