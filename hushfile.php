@@ -42,14 +42,14 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		fclose($fh);
 
 		// send email
-    if ($config->admin->send_email === true) {
-      $to = "{$config->admin->name} <{$config->admin->email}>";
-      $subject = "new file uploaded to hushfile.it";
-      $message = "new file uploaded to hushfile.it: http://hushfile.it/" . $fileid;
-      $from = $config->email_sender;
-      $headers = "From:" . $from;
-      mail($to,$subject,$message,$headers);
-    }
+		if ($config->admin->send_email === true) {
+			$to = "{$config->admin->name} <{$config->admin->email}>";
+			$subject = "new file uploaded to " . $_SERVER["SERVER_NAME"];
+			$message = "new file uploaded to " . $_SERVER["SERVER_NAME"] . ": https://" . $_SERVER["SERVER_NAME"] . "/" . $fileid;
+			$from = $config->email_sender;
+			$headers = "From:" . $from;
+			mail($to,$subject,$message,$headers);
+		}
 		
 		// encode json reply
 		echo json_encode(array("status" => "ok", "fileid" => $fileid));
