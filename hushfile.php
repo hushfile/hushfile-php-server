@@ -12,6 +12,11 @@ function get_uniqid() {
 
 if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	// THIS IS A FILE UPLOAD, ONLY POST ACCEPTED
+	if($_SERVER['REQUEST_METHOD'] != "POST") {
+		header("Status: 405 Method Not Allowed");
+		die(json_encode(array("status" => "Invalid upload request, only POST allowed", "fileid" => "")));
+	};
+	
 	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['deletepassword'])) {
 		// first get a new unique ID for this file
 		$fileid = get_uniqid();
@@ -52,7 +57,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		}
 		
 		// encode json reply
-		echo json_encode(array("status" => "ok", "fileid" => $fileid));
+		die(json_encode(array("status" => "ok", "fileid" => $fileid)));
 	} else {
 		header("Status: 400 Bad Request");
 		die(json_encode(array("status" => "invalid upload request, error", "fileid" => "")));
@@ -75,17 +80,17 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		//check if fileid exists and is valid
 		if (!file_exists($config->data_path.$params['fileid'])) {
 			header("Status: 404 Not Found");
-			echo json_encode(array("fileid" => $params['fileid'], "exists" => false));
+			die(json_encode(array("fileid" => $params['fileid'], "exists" => false)));
 		};
 	} else {
 		header("Status: 400 Bad Request");
-		echo json_encode(array("status" => "missing fileid"));
+		die(json_encode(array("status" => "missing fileid")));
 	};
 
 	switch($url['path']) {
 		case "/api/exists":
-			// fileid is valid if we got this far
-			echo json_encode(array("fileid" => $params['fileid'], "exists" => true));
+			// fileid is valid if we got this far, no need to check again
+			die(json_encode(array("fileid" => $params['fileid'], "exists" => true)));
 		break;
 		
 		case "/api/file":
@@ -100,6 +105,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 				flush(); // for large downloads
 			} 
 			fclose($fp);
+			exit();
 		break;
 		
 		case "/api/metadata":
@@ -109,6 +115,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			header("Content-Type: text/plain");
 			flush();
 			readfile($file);
+			exit();
 		break;
 		
 		case "/api/delete":
@@ -126,11 +133,11 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 				unlink($config->data_path.$params['fileid']."/metadata.dat");
 				unlink($config->data_path.$params['fileid']."/cryptofile.dat");
 				rmdir($config->data_path.$params['fileid']);
-				echo json_encode(array("fileid" => $params['fileid'], "deleted" => true));
+				die(json_encode(array("fileid" => $params['fileid'], "deleted" => true)));
 			} else {
 				//incorrect password
 				header("Status: 401 Unauthorized");
-				echo json_encode(array("fileid" => $params['fileid'], "deleted" => false));
+				die(json_encode(array("fileid" => $params['fileid'], "deleted" => false)));
 			};
 		break;
 		
@@ -141,13 +148,13 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$serverdata = fread($fh, filesize($file));
 			fclose($fh);
 			$serverdata = json_decode($serverdata,true);
-			echo json_encode(array("fileid" => $params['fileid'], "uploadip" => $serverdata['clientip']));
+			die(json_encode(array("fileid" => $params['fileid'], "uploadip" => $serverdata['clientip'])));
 		break;
 		
 		default:
 			// invalid command, show error page
 			header("Status: 400 Bad Request");
-			echo json_encode(array("fileid" => $params['fileid'], "status" => "bad request"));
+			die(json_encode(array("fileid" => $params['fileid'], "status" => "bad request")));
 		break;
 	};
 };
