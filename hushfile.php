@@ -3,7 +3,7 @@ $config = json_decode(file_get_contents('config.json'));
 
 function get_uniqid() {
 	$fileid = uniqid();
-	if (file_exists($datapath.$fileid)) {
+	if (file_exists($config->data_path.$fileid)) {
 		//somehow this ID already exists, call recursively
 		$fileid = get_uniqid();
 	};
