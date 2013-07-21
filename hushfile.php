@@ -2,9 +2,11 @@
 $config = json_decode(file_get_contents('config.json'));
 
 function get_uniqid() {
-	$fileid = uniqid();
+	$randombytes = openssl_random_pseudo_bytes(15);
+	$fileid = bin2hex($randombytes);
 	if (file_exists($config->data_path.$fileid)) {
-		//somehow this ID already exists, call recursively
+		//somehow this ID already exists, call recursively until we found an unused ID
+		//todo: set a recursion limit to avoid infinite looping
 		$fileid = get_uniqid();
 	};
 	return $fileid;
