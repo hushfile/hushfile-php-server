@@ -2,6 +2,7 @@
 $config = json_decode(file_get_contents('config.json'));
 
 function get_uniqid() {
+	global $config; // to access $config variable from inside of the function
 	$randombytes = openssl_random_pseudo_bytes(15);
 	$fileid = bin2hex($randombytes);
 	if (file_exists($config->data_path.$fileid)) {
