@@ -1,9 +1,13 @@
 {
+  "trust_x_forwarded_for": true,
   "data_path": "/usr/local/www/filedata/",
   "email_sender": "hushfile@example.com",
   "admin": {
     "name": "John Doe",
     "email": "jdoe@example.com",
     "send_email": false
-  }
+  },
+  "max_retention_hours": 24,
+  "max_filesize_bytes": 1073741824,
+  "max_chunksize_bytes": 104857600,
 }

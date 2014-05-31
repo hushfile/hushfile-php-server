@@ -17,7 +17,7 @@ function get_upload_info($path) {
 	$handle = opendir($path);
 	$totalsize = 0;
 	while (false !== ($entry = readdir($handle))) {
-		if(substr($entry,0,10) ==  "cryptofile.dat.") {
+		if(substr($entry,0,10) == "cryptofile.") {
 			$totalsize = $totalsize + filesize($entry);
 			$chunkcount++;
 		};
@@ -44,12 +44,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		die(json_encode(array("status" => "invalid upload request, chunknumber must be numeric", "fileid" => "")));
 	};
 	
-	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['deletepassword']) && isset($_REQUEST['chunknumber'] && isset($_REQUEST['finishupload'])) {
+	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload'])) {
 		// This is the first chunk of this file, not a continuation of an existing upload
 		
 		// get a new unique ID for this file
 		$fileid = get_fileid();
-		$cryptofile = $config->data_path.$fileid."/cryptofile.dat." . $_REQUEST['chunknumber'];
+		$cryptofile = $config->data_path.$fileid."/cryptofile." . $_REQUEST['chunknumber'];
 		$metadatafile = $config->data_path.$fileid."/metadata.dat";
 		$serverdatafile = $config->data_path.$fileid."/serverdata.json";
 		
@@ -63,26 +63,33 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		fclose($fh);
 
 		// find client IP
-		if(array_key_exists('X-Forwarded-For',$_SERVER)) {
-			$clientip = $_SERVER['X-Forwarded-For'];
-		} else {
-			$clientip = $_SERVER['REMOTE_ADDR'];
-		}
+        if($config->trust_x_forwarded_for && array_key_exists('X-Forwarded-For',$_SERVER)) {
+            $clientip = $_SERVER['X-Forwarded-For'];
+        } else {
+            $clientip = $_SERVER['REMOTE_ADDR'];
+        };
 
 		// write serverdata file
 		$fh = fopen($serverdatafile, 'w') or die(json_encode(array("status" => "unable to write serverdatafile", "fileid" => "")));
 		
+        trust_x_forwarded_for
 		if(array_key_exists('X-Forwarded-For',$_SERVER)) {
 			$clientip = $_SERVER['X-Forwarded-For'];
 		} else {
 			$clientip = $_SERVER['REMOTE_ADDR'];
 		}
 		
-		$json = json_encode(array(
-			"deletepassword" => $_REQUEST['deletepassword'],
-			"clientips" => $clientip
-		));
-		fwrite($fh, $json);
+        if(array_key_exists('deletepassword',$_REQUEST)) {
+            $json = json_encode(array(
+                "deletepassword" => $_REQUEST['deletepassword'],
+                "clientips" => $clientip
+            ));
+        } else {
+            $json = json_encode(array(
+                "clientips" => $clientip
+            ));
+        };
+        fwrite($fh, $json);
 		fclose($fh);
 
 		// check if upload is to be finished
@@ -123,7 +130,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			"finished" => $finished, 
 			"uploadpassword" => $uploadpassword
 		)));
-	} elseif(isset($_REQUEST['cryptofile']) && isset($_REQUEST['chunknumber'] && isset($_REQUEST['finishupload']) && isset($_REQUEST['fileid']) && isset($_REQUEST['uploadpassword'])) {
+	} elseif(isset($_REQUEST['cryptofile']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload']) && isset($_REQUEST['fileid']) && isset($_REQUEST['uploadpassword'])) {
 		// this is a continuation of an existing upload
 		
 		// check if fileid is valid
@@ -151,7 +158,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		};
 		
 		// write encrypted file part
-		$cryptofile = $config->data_path.$fileid."/cryptofile.dat." . $_REQUEST['chunknumber'];
+		$cryptofile = $config->data_path.$fileid."/cryptofile." . $_REQUEST['chunknumber'];
 		$fh = fopen($cryptofile, 'w') or die(json_encode(array("status" => "unable to write cryptofile", "fileid" => "")));
 		fwrite($fh, $_REQUEST['cryptofile']);
 		fclose($fh);
@@ -215,8 +222,22 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$params[$key] = substr($element,strpos($element,"=")+1);
 		};
 	};
-	
-	// check if fileid is in the params
+
+    // handle API endpoints that do not require a valid fileid
+	switch($url['path']) {
+		case "/api/serverinfo":
+            // return serverinfo json
+            die(json_encode(array(
+                "server_operator_email" => $config->admin->email,
+                "max_retention_hours" => $config->max_retention_hours,
+                "max_filesize" => $config->max_filesize_bytes,
+                "max_chunksize" => $config->max_chunksize_bytes
+            )));
+		break;
+	};
+    
+	// all remaining API endpoints require a valid fileid, 
+    // so check if fileid is in the params
 	if(isset($params['fileid'])) {
 		//check if fileid exists and is valid
 		if (!file_exists($config->data_path.$params['fileid'])) {
@@ -242,8 +263,8 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		break;
 		
 		case "/api/file":
-			//download cryptofile.dat.N file
-			$file = $config->data_path.$params['fileid']."/cryptofile.dat." . $params['chunknumber'];
+			//download cryptofile.N file
+			$file = $config->data_path.$params['fileid']."/cryptofile." . $params['chunknumber'];
 			header("Content-Length: " . filesize($file));
 			header("Content-Type: text/plain");
 			flush();
@@ -279,7 +300,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 				//password valid! delete stuff
 				unlink($config->data_path.$params['fileid']."/serverdata.json");
 				unlink($config->data_path.$params['fileid']."/metadata.dat");
-				array_map('unlink', glob($config->data_path.$params['fileid']."/cryptofile.dat.*"));
+				array_map('unlink', glob($config->data_path.$params['fileid']."/cryptofile.*"));
 				rmdir($config->data_path.$params['fileid']);
 				die(json_encode(array("fileid" => $params['fileid'], "deleted" => true)));
 			} else {
