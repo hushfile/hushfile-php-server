@@ -62,23 +62,17 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		fwrite($fh, $_REQUEST['metadata']);
 		fclose($fh);
 
+		// open serverdata file
+		$fh = fopen($serverdatafile, 'w') or die(json_encode(array("status" => "unable to open serverdatafile for writing", "fileid" => "")));
+				
 		// find client IP
         if($config->trust_x_forwarded_for && array_key_exists('X-Forwarded-For',$_SERVER)) {
             $clientip = $_SERVER['X-Forwarded-For'];
         } else {
             $clientip = $_SERVER['REMOTE_ADDR'];
         };
-
-		// write serverdata file
-		$fh = fopen($serverdatafile, 'w') or die(json_encode(array("status" => "unable to write serverdatafile", "fileid" => "")));
-		
-        trust_x_forwarded_for
-		if(array_key_exists('X-Forwarded-For',$_SERVER)) {
-			$clientip = $_SERVER['X-Forwarded-For'];
-		} else {
-			$clientip = $_SERVER['REMOTE_ADDR'];
-		}
-		
+        
+        // build json object
         if(array_key_exists('deletepassword',$_REQUEST)) {
             $json = json_encode(array(
                 "deletepassword" => $_REQUEST['deletepassword'],
@@ -89,6 +83,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
                 "clientips" => $clientip
             ));
         };
+
         fwrite($fh, $json);
 		fclose($fh);
 
