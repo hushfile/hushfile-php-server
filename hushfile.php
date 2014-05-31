@@ -2,6 +2,7 @@
 $config = json_decode(file_get_contents('config.json'));
 
 function get_fileid() {
+	global $config; // to access $config variable from inside of the function
 	$fileid = bin2hex(openssl_random_pseudo_bytes(15));
 	if (file_exists($config->data_path.$fileid)) {
 		//somehow this ID already exists, call recursively until we found an unused ID
