@@ -1,5 +1,5 @@
 <?php
-$config = json_decode(file_get_contents('/home/rel/private/hushfile-web/config.json'));
+$config = json_decode(file_get_contents('config.json'));
 
 function get_fileid() {
 	global $config; // to access $config variable from inside of the function
