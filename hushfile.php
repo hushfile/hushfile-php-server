@@ -1,5 +1,5 @@
 <?php
-$config = json_decode(file_get_contents('config.json'));
+$config = json_decode(file_get_contents('/home/rel/private/hushfile-web/config.json'));
 
 function get_fileid() {
 	global $config; // to access $config variable from inside of the function
@@ -32,6 +32,7 @@ function get_upload_info($path) {
 };
 
 if($_SERVER["REQUEST_URI"] == "/api/upload") {
+	header('Content-Type','application/json');
 	// THIS IS A FILE UPLOAD, ONLY POST ACCEPTED
 	if($_SERVER['REQUEST_METHOD'] != "POST") {
 		header("Status: 405 Method Not Allowed");
@@ -46,12 +47,13 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	
 	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload'])) {
 		// This is the first chunk of this file, not a continuation of an existing upload
-		
+
 		// get a new unique ID for this file
 		$fileid = get_fileid();
 		$cryptofile = $config->data_path.$fileid."/cryptofile." . $_REQUEST['chunknumber'];
 		$metadatafile = $config->data_path.$fileid."/metadata.dat";
 		$serverdatafile = $config->data_path.$fileid."/serverdata.json";
+		$uploadpasswordfile = $config->data_path.$fileid."/uploadpassword";
 		
 		// create folder for this file
 		mkdir($config->data_path.$fileid);
@@ -76,7 +78,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
         if(array_key_exists('deletepassword',$_REQUEST)) {
             $json = json_encode(array(
                 "deletepassword" => $_REQUEST['deletepassword'],
-                "clientips" => $clientip
+                "clientips" => array($clientip)
             ));
         } else {
             $json = json_encode(array(
@@ -88,7 +90,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		fclose($fh);
 
 		// check if upload is to be finished
-		if ($_REQUEST['finishupload']) {
+		if ($_REQUEST['finishupload'] == "true") {
 			$finished = true;
 			$uploadpassword = null;
 		} else {
@@ -96,7 +98,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$uploadpassword = bin2hex(openssl_random_pseudo_bytes(40));
 			$finished = false;
 			// write the uploadpassword to a file
-			$fh = fopen($serverdatafile, 'w') or die(json_encode(array("status" => "unable to write uploadpassword file", "fileid" => "")));
+			$fh = fopen($uploadpasswordfile, 'w') or die(json_encode(array("status" => "unable to write uploadpassword file", "fileid" => "")));
 			fwrite($fh, $uploadpassword);
 			fclose($fh);
 		};
@@ -127,7 +129,8 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		)));
 	} elseif(isset($_REQUEST['cryptofile']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload']) && isset($_REQUEST['fileid']) && isset($_REQUEST['uploadpassword'])) {
 		// this is a continuation of an existing upload
-		
+		$params = $_REQUEST;
+		$fileid = $params['fileid'];
 		// check if fileid is valid
 		if (!file_exists($config->data_path.$params['fileid'])) {
 			header("Status: 404 Not Found");
@@ -144,12 +147,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		};
 		
 		// check if the uploadpassword is correct
-		$fh = fopen($config->data_path.$fileid."/uploadpassword", 'r');
-		$uploadpassword = fread($fh, filesize($file));
-		fclose($fh);
+		
+		$uploadpassword = trim(file_get_contents($config->data_path.$fileid."/uploadpassword"));
+		
 		if($uploadpassword != $_REQUEST['uploadpassword']) {
 			header("Status: 403 Forbidden");
-			die(json_encode(array("fileid" => $params['fileid'], "status" => "Incorrect uploadpassword")));
+			die(json_encode(array("fileid" => $params['fileid'], "status" => "Incorrect uploadpassword".$uploadpassword."==".$_REQUEST['uploadpassword'])));
 		};
 		
 		// write encrypted file part
@@ -198,9 +201,11 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$headers = "From:" . $from;
 			mail($to,$subject,$message,$headers);
 		};
+
+		$finished = $_REQUEST['finishupload'] == "true";
 		
 		// encode and return json reply
-		die(json_encode(array("status" => "ok", "fileid" => $fileid, "chunks" => $chunkcount, "totalsize" => $totalsize, "finished" => $finished, "uploadpassword" => $uploadpassword)));
+		die(json_encode(array("status" => "ok", "fileid" => $fileid, "chunks" => $chunkinfo['chunkcount'], "totalsize" => $chunkinfo['totalsize'], "finished" => $finished, "uploadpassword" => $uploadpassword)));
 	} else {
 		header("Status: 400 Bad Request");
 		die(json_encode(array("status" => "invalid upload request, error", "fileid" => "")));
