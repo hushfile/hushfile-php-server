@@ -16,9 +16,10 @@ function get_fileid() {
 function get_upload_info($path) {
 	$handle = opendir($path);
 	$totalsize = 0;
+	$chunkcount = 0;
 	while (false !== ($entry = readdir($handle))) {
-		if(substr($entry,0,10) == "cryptofile.") {
-			$totalsize = $totalsize + filesize($entry);
+		if(substr($entry,0,11) == "cryptofile.") {
+			$totalsize = $totalsize + filesize($path.'/'.$entry);
 			$chunkcount++;
 		};
 	};
@@ -31,18 +32,25 @@ function get_upload_info($path) {
 	);
 };
 
-if($_SERVER["REQUEST_URI"] == "/api/upload") {
+function json_response($data) {
+	$json = json_encode($data);
 	header('Content-Type','application/json');
+	//header('Content-Length',strlen($json));
+	die(json_encode($json));
+}
+
+if($_SERVER["REQUEST_URI"] == "/api/upload") {
+	
 	// THIS IS A FILE UPLOAD, ONLY POST ACCEPTED
 	if($_SERVER['REQUEST_METHOD'] != "POST") {
 		header("Status: 405 Method Not Allowed");
-		die(json_encode(array("status" => "Invalid upload request, only POST allowed", "fileid" => "")));
+		json_response(array("status" => "Invalid upload request, only POST allowed", "fileid" => ""));
 	};
 	
 	// check if $_REQUEST['chunknumber'] is numeric
 	if(!is_numeric($_REQUEST['chunknumber'])) {
 		header("Status: 400 Bad Request");
-		die(json_encode(array("status" => "invalid upload request, chunknumber must be numeric", "fileid" => "")));
+		json_response(array("status" => "invalid upload request, chunknumber must be numeric, " + $_REQUEST['chunknumber'], "fileid" => ""));
 	};
 	
 	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload'])) {
@@ -60,12 +68,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		
 		// write metadata file
-		$fh = fopen($metadatafile, 'w') or die(json_encode(array("status" => "unable to write metadatafile", "fileid" => "")));
+		$fh = fopen($metadatafile, 'w') or json_response(array("status" => "unable to write metadatafile", "fileid" => ""));
 		fwrite($fh, $_REQUEST['metadata']);
 		fclose($fh);
 
 		// open serverdata file
-		$fh = fopen($serverdatafile, 'w') or die(json_encode(array("status" => "unable to open serverdatafile for writing", "fileid" => "")));
+		$fh = fopen($serverdatafile, 'w') or json_response(array("status" => "unable to open serverdatafile for writing", "fileid" => ""));
 				
 		// find client IP
         if($config->trust_x_forwarded_for && array_key_exists('X-Forwarded-For',$_SERVER)) {
@@ -98,10 +106,16 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$uploadpassword = bin2hex(openssl_random_pseudo_bytes(40));
 			$finished = false;
 			// write the uploadpassword to a file
-			$fh = fopen($uploadpasswordfile, 'w') or die(json_encode(array("status" => "unable to write uploadpassword file", "fileid" => "")));
+			$fh = fopen($uploadpasswordfile, 'w') or json_response(array("status" => "unable to write uploadpassword file", "fileid" => ""));
 			fwrite($fh, $uploadpassword);
 			fclose($fh);
 		};
+
+		// write encrypted file part
+		$cryptofile = $config->data_path.$fileid."/cryptofile." . $_REQUEST['chunknumber'];
+		$fh = fopen($cryptofile, 'w') or json_response(array("status" => "unable to write cryptofile", "fileid" => ""));
+		fwrite($fh, $_REQUEST['cryptofile']);
+		fclose($fh);
 		
 		// send email
 		if ($config->admin->send_email === true) {
@@ -119,14 +133,14 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		};
 		
 		// encode and return json reply
-		die(json_encode(array(
+		json_response(array(
 			"status" => "ok", 
 			"fileid" => $fileid, 
 			"chunks" => 1, 
 			"totalsize" => strlen($_REQUEST['cryptofile']), 
 			"finished" => $finished, 
 			"uploadpassword" => $uploadpassword
-		)));
+		));
 	} elseif(isset($_REQUEST['cryptofile']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload']) && isset($_REQUEST['fileid']) && isset($_REQUEST['uploadpassword'])) {
 		// this is a continuation of an existing upload
 		$params = $_REQUEST;
@@ -134,16 +148,16 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		// check if fileid is valid
 		if (!file_exists($config->data_path.$params['fileid'])) {
 			header("Status: 404 Not Found");
-			die(json_encode(array("fileid" => $params['fileid'], "exists" => false)));
+			json_response(array("fileid" => $params['fileid'], "exists" => false));
 		};
 		
 		// check that the upload is not finished
 		if(!file_exists($config->data_path.$fileid."/uploadpassword")) {
 			header("Status: 412 Precondition Failed");
-			die(json_encode(array(
+			json_response(array(
 				"fileid" => $params['fileid'], 
 				"status" => "File upload is finished, no further uploads possible"
-			)));
+			));
 		};
 		
 		// check if the uploadpassword is correct
@@ -152,12 +166,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		if($uploadpassword != $_REQUEST['uploadpassword']) {
 			header("Status: 403 Forbidden");
-			die(json_encode(array("fileid" => $params['fileid'], "status" => "Incorrect uploadpassword".$uploadpassword."==".$_REQUEST['uploadpassword'])));
+			json_response(array("fileid" => $params['fileid'], "status" => "Incorrect uploadpassword".$uploadpassword."==".$_REQUEST['uploadpassword']));
 		};
 		
 		// write encrypted file part
 		$cryptofile = $config->data_path.$fileid."/cryptofile." . $_REQUEST['chunknumber'];
-		$fh = fopen($cryptofile, 'w') or die(json_encode(array("status" => "unable to write cryptofile", "fileid" => "")));
+		$fh = fopen($cryptofile, 'w') or json_response(array("status" => "unable to write cryptofile", "fileid" => ""));
 		fwrite($fh, $_REQUEST['cryptofile']);
 		fclose($fh);
 		
@@ -177,7 +191,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		if(!$alreadyadded) {
 			$serverdata['clientips'][] = $ip;
 			//write serverdata.json again
-			$fh = fopen($serverdatafile, 'w') or die(json_encode(array("status" => "unable to write serverdatafile", "fileid" => "")));
+			$fh = fopen($serverdatafile, 'w') or json_response(array("status" => "unable to write serverdatafile", "fileid" => ""));
 			$json = json_encode($serverdata);
 			fwrite($fh, $json);
 			fclose($fh);
@@ -205,10 +219,10 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		$finished = $_REQUEST['finishupload'] == "true";
 		
 		// encode and return json reply
-		die(json_encode(array("status" => "ok", "fileid" => $fileid, "chunks" => $chunkinfo['chunkcount'], "totalsize" => $chunkinfo['totalsize'], "finished" => $finished, "uploadpassword" => $uploadpassword)));
+		json_response(array("status" => "ok", "fileid" => $fileid, "chunks" => $chunkinfo['chunkcount'], "totalsize" => $chunkinfo['totalsize'], "finished" => $finished, "uploadpassword" => $uploadpassword));
 	} else {
 		header("Status: 400 Bad Request");
-		die(json_encode(array("status" => "invalid upload request, error", "fileid" => "")));
+		json_response(array("status" => "invalid upload request, error", "fileid" => ""));
 	};
 } else {
 	// parse URL
@@ -227,12 +241,12 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	switch($url['path']) {
 		case "/api/serverinfo":
             // return serverinfo json
-            die(json_encode(array(
+            json_response(array(
                 "server_operator_email" => $config->admin->email,
                 "max_retention_hours" => $config->max_retention_hours,
                 "max_filesize" => $config->max_filesize_bytes,
                 "max_chunksize" => $config->max_chunksize_bytes
-            )));
+            ));
 		break;
 	};
     
@@ -242,24 +256,24 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		//check if fileid exists and is valid
 		if (!file_exists($config->data_path.$params['fileid'])) {
 			header("Status: 404 Not Found");
-			die(json_encode(array("fileid" => $params['fileid'], "exists" => false)));
+			json_response(array("fileid" => $params['fileid'], "exists" => false));
 		};
 	} else {
 		header("Status: 400 Bad Request");
-		die(json_encode(array("status" => "missing fileid")));
+		json_response(array("status" => "missing fileid"));
 	};
 
 	switch($url['path']) {
 		case "/api/exists":
 			// fileid is valid if we got this far, find out if the upload is finished
-			$uploadinfo = get_upload_info($config->data_path.$fileid);
-			die(json_encode(array(
+			$uploadinfo = get_upload_info($config->data_path.'/'.$params['fileid']);
+			json_response(array(
 				"fileid" => $params['fileid'], 
 				"exists" => true, 
 				"chunks" => $uploadinfo['chunkcount'], 
 				"totalsize" => $uploadinfo['totalsize'], 
 				"finished" => $uploadinfo['finished']
-			)));
+			));
 		break;
 		
 		case "/api/file":
@@ -302,11 +316,11 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 				unlink($config->data_path.$params['fileid']."/metadata.dat");
 				array_map('unlink', glob($config->data_path.$params['fileid']."/cryptofile.*"));
 				rmdir($config->data_path.$params['fileid']);
-				die(json_encode(array("fileid" => $params['fileid'], "deleted" => true)));
+				json_response(array("fileid" => $params['fileid'], "deleted" => true));
 			} else {
 				//incorrect password
 				header("Status: 401 Unauthorized");
-				die(json_encode(array("fileid" => $params['fileid'], "deleted" => false)));
+				json_response(array("fileid" => $params['fileid'], "deleted" => false));
 			};
 		break;
 		
@@ -317,13 +331,13 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$serverdata = fread($fh, filesize($file));
 			fclose($fh);
 			$serverdata = json_decode($serverdata,true);
-			die(json_encode(array("fileid" => $params['fileid'], "uploadip" => $serverdata['clientips'])));
+			json_response(array("fileid" => $params['fileid'], "uploadip" => $serverdata['clientips']));
 		break;
 		
 		default:
 			// invalid command, show error page
 			header("Status: 400 Bad Request");
-			die(json_encode(array("fileid" => $params['fileid'], "status" => "bad request")));
+			json_response(array("fileid" => $params['fileid'], "status" => "bad request"));
 		break;
 	};
 };
