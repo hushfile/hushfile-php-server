@@ -40,7 +40,8 @@ function json_response($data) {
 }
 
 if($_SERVER["REQUEST_URI"] == "/api/upload") {
-	
+	if(empty($_REQUEST)) $_REQUEST = json_decode(file_get_contents('php://input'), true);
+
 	// THIS IS A FILE UPLOAD, ONLY POST ACCEPTED
 	if($_SERVER['REQUEST_METHOD'] != "POST") {
 		header("Status: 405 Method Not Allowed");
@@ -52,7 +53,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		header("Status: 400 Bad Request");
 		json_response(array("status" => "invalid upload request, chunknumber must be numeric, " + $_REQUEST['chunknumber'], "fileid" => ""));
 	};
-	
+
 	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload'])) {
 		// This is the first chunk of this file, not a continuation of an existing upload
 
@@ -90,7 +91,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
             ));
         } else {
             $json = json_encode(array(
-                "clientips" => $clientip
+                "clientips" => array($clientip)
             ));
         };
 
