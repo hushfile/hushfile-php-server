@@ -9,5 +9,5 @@
   },
   "max_retention_hours": 24,
   "max_filesize_bytes": 1073741824,
-  "max_chunksize_bytes": 104857600,
+  "max_chunksize_bytes": 104857600
 }

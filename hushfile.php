@@ -24,7 +24,12 @@ function get_upload_info($path) {
 		};
 	};
 	closedir($handle);
-	$finished = file_exists($path."/uploadpassword");
+	if(file_exists($path."/uploadpassword")) {
+        $finished = False;
+    } else {
+        $finished = True;
+    };
+    
 	return array(
 		"chunkcount" => $chunkcount, 
 		"totalsize" => $totalsize, 
@@ -62,7 +67,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		$cryptofile = $config->data_path.$fileid."/cryptofile." . $_REQUEST['chunknumber'];
 		$metadatafile = $config->data_path.$fileid."/metadata.dat";
 		$serverdatafile = $config->data_path.$fileid."/serverdata.json";
-		$uploadpasswordfile = $config->data_path.$fileid."/uploadpassword";
+        $uploadpasswordfile = $config->data_path.$fileid."/uploadpassword";
 		
 		// create folder for this file
 		mkdir($config->data_path.$fileid);
@@ -218,6 +223,9 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		};
 
 		$finished = $_REQUEST['finishupload'] == "true";
+        if($finished) {
+            unlink($config->data_path.$fileid."/uploadpassword");
+        };
 		
 		// encode and return json reply
 		json_response(array("status" => "ok", "fileid" => $fileid, "chunks" => $chunkinfo['chunkcount'], "totalsize" => $chunkinfo['totalsize'], "finished" => $finished, "uploadpassword" => $uploadpassword));
