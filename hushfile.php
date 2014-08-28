@@ -129,9 +129,9 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$subject = "new filepart uploaded to " . $_SERVER["SERVER_NAME"];
 			$message = "new filepart uploaded to " . $_SERVER["SERVER_NAME"] . ": https://" . $_SERVER["SERVER_NAME"] . "/" . $fileid . "\n";
 			if($finished) {
-				$message += "upload is finished, 1 chunk";
+				$message .= "upload is finished, 1 chunk";
 			} else {
-				$message += "upload is not finished, 1 chunk so far";
+				$message .= "upload is not finished, 1 chunk so far";
 			};
 			$from = $config->email_sender;
 			$headers = "From:" . $from;
@@ -213,9 +213,9 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$subject = "new filepart uploaded to " . $_SERVER["SERVER_NAME"];
 			$message = "new filepart uploaded to " . $_SERVER["SERVER_NAME"] . ": https://" . $_SERVER["SERVER_NAME"] . "/" . $fileid . "\n";
 			if($finished) {
-				$message += "upload is finished, " . $chunkinfo['chunkcount'] . " chunks - " . $chunkinfo['totalsize'] . " bytes total";
+				$message .= "upload is finished, " . $chunkinfo['chunkcount'] . " chunks - " . $chunkinfo['totalsize'] . " bytes total";
 			} else {
-				$message += "upload is not finished, " . $chunkinfo['chunkcount'] . " chunks  - " . $chunkinfo['totalsize'] . " bytes total";
+				$message .= "upload is not finished, " . $chunkinfo['chunkcount'] . " chunks  - " . $chunkinfo['totalsize'] . " bytes total";
 			};
 			$from = $config->email_sender;
 			$headers = "From:" . $from;
