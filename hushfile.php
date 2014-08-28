@@ -266,7 +266,14 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		if (!file_exists($config->data_path.$params['fileid'])) {
 			header("Status: 404 Not Found");
 			json_response(array("fileid" => $params['fileid'], "exists" => false));
-		};
+		} else {
+            // check if the upload is finished
+            if(file_exists($config->data_path.$params['fileid']."/uploadpassword")) {
+                $finished = False;
+            } else {
+                $finished = True;
+            };
+        };
 	} else {
 		header("Status: 400 Bad Request");
 		json_response(array("status" => "missing fileid"));
@@ -286,28 +293,38 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		break;
 		
 		case "/api/file":
-			//download cryptofile.N file
-			$file = $config->data_path.$params['fileid']."/cryptofile." . $params['chunknumber'];
-			header("Content-Length: " . filesize($file));
-			header("Content-Type: text/plain");
-			flush();
-			$fp = fopen($file, "r");
-			while (!feof($fp)) {
-				echo fread($fp, 65536);
-				flush(); // for large downloads
-			}
-			fclose($fp);
-			exit();
+            if($finished) {
+                //download cryptofile.N file
+                $file = $config->data_path.$params['fileid']."/cryptofile." . $params['chunknumber'];
+                header("Content-Length: " . filesize($file));
+                header("Content-Type: text/plain");
+                flush();
+                $fp = fopen($file, "r");
+                while (!feof($fp)) {
+                    echo fread($fp, 65536);
+                    flush(); // for large downloads
+                }
+                fclose($fp);
+                exit();
+            } else {
+                header("Status: 412 Precondition Failed");
+                json_response(array("fileid" => $params['fileid'], "status" => "Upload is unfinished."));
+            };
 		break;
 		
 		case "/api/metadata":
-			//download metadata.dat file
-			$file = $config->data_path.$params['fileid']."/metadata.dat";
-			header("Content-Length: " . filesize($file));
-			header("Content-Type: text/plain");
-			flush();
-			readfile($file);
-			exit();
+            if($finished) {
+                //download metadata.dat file
+                $file = $config->data_path.$params['fileid']."/metadata.dat";
+                header("Content-Length: " . filesize($file));
+                header("Content-Type: text/plain");
+                flush();
+                readfile($file);
+                exit();
+            } else {
+                header("Status: 412 Precondition Failed");
+                json_response(array("fileid" => $params['fileid'], "status" => "Upload is unfinished."));
+            };
 		break;
 		
 		case "/api/delete":
