@@ -15,6 +15,7 @@ function get_fileid() {
 // function to get the number of chunks and total size of a given file
 function get_upload_info($path) {
 	$handle = opendir($path);
+	if (!$handle) trigger_error("Can't open " . htmlentities($path), E_USER_ERROR);
 	$totalsize = 0;
 	$chunkcount = 0;
 	while (false !== ($entry = readdir($handle))) {
