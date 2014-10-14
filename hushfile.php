@@ -253,8 +253,8 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
             json_response(array(
                 "server_operator_email" => $config->admin->email,
                 "max_retention_hours" => $config->max_retention_hours,
-                "max_filesize" => $config->max_filesize_bytes,
-                "max_chunksize" => $config->max_chunksize_bytes
+                "max_filesize_bytes" => $config->max_filesize_bytes,
+                "max_chunksize_bytes" => $config->max_chunksize_bytes
             ));
 		break;
 	};
