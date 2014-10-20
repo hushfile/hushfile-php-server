@@ -107,7 +107,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		fclose($fh);
 
 		// check if upload is to be finished
-		if ($_REQUEST['finishupload'] == "True") {
+		if (json_decode($_REQUEST['finishupload'])) {
 			$finished = true;
 			$uploadpassword = null;
 		} else {
@@ -225,7 +225,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			mail($to,$subject,$message,$headers);
 		};
 
-		$finished = $_REQUEST['finishupload'] == "True";
+		$finished = json_decode($_REQUEST['finishupload']);
         if($finished) {
             unlink($config->data_path.$fileid."/uploadpassword");
         };
