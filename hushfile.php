@@ -55,9 +55,9 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	};
 	
 	// check if $_REQUEST['chunknumber'] is numeric
-	if(!is_numeric($_REQUEST['chunknumber'])) {
+	if(!isset($_REQUEST["chunknumber"]) || !is_numeric($_REQUEST['chunknumber'])) {
 		header("Status: 400 Bad Request");
-		json_response(array("status" => "invalid upload request, chunknumber must be numeric, " + $_REQUEST['chunknumber'], "fileid" => ""));
+		json_response(array("status" => "invalid upload request, chunknumber must be numeric, " . (isset($_REQUEST["chunknumber"]) ? $_REQUEST['chunknumber'] : "no chunknumber set"), "fileid" => ""));
 	};
 
 	if(isset($_REQUEST['cryptofile']) && isset($_REQUEST['metadata']) && isset($_REQUEST['chunknumber']) && isset($_REQUEST['finishupload'])) {
