@@ -71,8 +71,10 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
         $uploadpasswordfile = $config->data_path.$fileid."/uploadpassword";
 		
 		// create folder for this file
-		mkdir($config->data_path.$fileid);
-		
+		@mkdir($config->data_path . $fileid) or json_response(array(
+			"status" => "unable to create directory for fileid",
+			"fileid" => ""
+		));
 		
 		// write metadata file
 		$fh = fopen($metadatafile, 'w') or json_response(array("status" => "unable to write metadatafile", "fileid" => ""));
