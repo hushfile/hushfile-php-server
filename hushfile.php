@@ -143,7 +143,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		// encode and return json reply
 		json_response(array(
-			"status" => "ok", 
+			"status" => "OK", 
 			"fileid" => $fileid, 
 			"chunks" => 1, 
 			"totalsize" => strlen($_REQUEST['cryptofile']), 
@@ -231,7 +231,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
         };
 		
 		// encode and return json reply
-		json_response(array("status" => "ok", "fileid" => $fileid, "chunks" => $chunkinfo['chunkcount'], "totalsize" => $chunkinfo['totalsize'], "finished" => $finished, "uploadpassword" => $uploadpassword));
+		json_response(array("status" => "OK", "fileid" => $fileid, "chunks" => $chunkinfo['chunkcount'], "totalsize" => $chunkinfo['totalsize'], "finished" => $finished, "uploadpassword" => $uploadpassword));
 	} else {
 		header("Status: 400 Bad Request");
 		json_response(array("status" => "invalid upload request, error", "fileid" => ""));
