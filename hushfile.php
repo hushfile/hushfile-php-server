@@ -175,7 +175,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 		
 		if($uploadpassword != $_REQUEST['uploadpassword']) {
 			header("Status: 403 Forbidden");
-			json_response(array("fileid" => $params['fileid'], "status" => "Incorrect uploadpassword".$uploadpassword."==".$_REQUEST['uploadpassword']));
+			json_response(array("fileid" => $params['fileid'], "status" => "Incorrect uploadpassword"));
 		};
 		
 		// write encrypted file part
