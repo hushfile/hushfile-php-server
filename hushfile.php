@@ -339,7 +339,7 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 			$serverdata = json_decode($serverdata,true);
 			
 			//check if passwords match
-			if($params['deletepassword'] == $serverdata['deletepassword']) {
+			if(array_key_exists("deletepassword", $serverdata) && $params['deletepassword'] == $serverdata['deletepassword']) {
 				//password valid! delete stuff
 				unlink($config->data_path.$params['fileid']."/serverdata.json");
 				unlink($config->data_path.$params['fileid']."/metadata.dat");
