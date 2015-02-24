@@ -40,8 +40,8 @@ function get_upload_info($path) {
 
 function json_response($data) {
 	$json = json_encode($data);
-	header('Content-Type','application/json');
-	//header('Content-Length',strlen($json));
+	header('Content-Type: application/json');
+	//header('Content-Length: ' . strlen($json));
 	die($json);
 }
 
