@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set("UTC");
+
 $config = json_decode(file_get_contents('config.json'));
 
 function get_fileid() {
