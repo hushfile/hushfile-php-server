@@ -1,6 +1,14 @@
 <?php
 date_default_timezone_set("UTC");
 
+function startsWith($haystack, $needle) {
+    // search backwards starting from haystack length characters from the end
+    return $needle === "" || strrpos($haystack, $needle, -strlen($haystack)) !== FALSE;
+}
+
+$isNginx = startsWith($_SERVER["REQUEST_URI"], "/api");
+$path = $isNginx ? $_SERVER["REQUEST_URI"] : $_REQUEST["path"];
+
 $config = json_decode(file_get_contents('config.json'));
 
 function get_fileid() {
@@ -47,8 +55,9 @@ function json_response($data) {
 	die($json);
 }
 
-if($_SERVER["REQUEST_URI"] == "/api/upload") {
-	if(empty($_REQUEST)) $_REQUEST = json_decode(file_get_contents('php://input'), true);
+if($path == "/api/upload") {
+	$reqbody = json_decode(file_get_contents('php://input'), true);
+	if ($reqbody) $_REQUEST = array_merge($_REQUEST, $reqbody);
 
 	// THIS IS A FILE UPLOAD, ONLY POST ACCEPTED
 	if($_SERVER['REQUEST_METHOD'] != "POST") {
@@ -240,16 +249,20 @@ if($_SERVER["REQUEST_URI"] == "/api/upload") {
 	};
 } else {
 	// parse URL
-	$url = parse_url($_SERVER['REQUEST_URI']);
-	$vars = explode("&",$url['query']);
-	foreach($vars as $element) {
-		if(strpos($element,"=") === false) {
-			$params[$element] = null;
-		} else {
-			$key = substr($element,0,strpos($element,"="));
-			$params[$key] = substr($element,strpos($element,"=")+1);
+	if ($isNginx) {
+		$url = parse_url($_SERVER['REQUEST_URI']);
+		$vars = explode("&",$url['query']);
+		foreach($vars as $element) {
+			if(strpos($element,"=") === false) {
+				$params[$element] = null;
+			} else {
+				$key = substr($element,0,strpos($element,"="));
+				$params[$key] = substr($element,strpos($element,"=")+1);
+			};
 		};
-	};
+	} else {
+		$params = $url = $_REQUEST;
+	}
 
     // handle API endpoints that do not require a valid fileid
 	switch($url['path']) {
