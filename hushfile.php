@@ -56,7 +56,14 @@ function json_response($data) {
 }
 
 if($path == "/api/upload") {
-	$reqbody = json_decode(file_get_contents('php://input'), true);
+	$content = file_get_contents('php://input');
+	$hasGetAllHeaders = function_exists("getallheaders");
+	if (!$hasGetAllHeaders || getallheaders()["Content-Encoding"] === "gzip") {
+		$decompressed = @gzuncompress($content);
+		if ($hasGetAllHeaders && !$decompressed) trigger_error("Can't gzdecode request body.", E_USER_ERROR);
+		$content = $decompressed;
+	}
+	$reqbody = json_decode($content, true);
 	if ($reqbody) $_REQUEST = array_merge($_REQUEST, $reqbody);
 
 	// THIS IS A FILE UPLOAD, ONLY POST ACCEPTED
@@ -80,6 +87,10 @@ if($path == "/api/upload") {
 		$metadatafile = $config->data_path.$fileid."/metadata.dat";
 		$serverdatafile = $config->data_path.$fileid."/serverdata.json";
         $uploadpasswordfile = $config->data_path.$fileid."/uploadpassword";
+
+		if (strlen($_REQUEST["cryptofile"]) > $config->max_chunksize_bytes) {
+			json_response(["status" => "cryptofile exceeds chunksize!", "fileid" => ""]);
+		}
 		
 		// create folder for this file
 		@mkdir($config->data_path . $fileid) or json_response(array(
@@ -317,7 +328,7 @@ if($path == "/api/upload") {
                 header("Content-Length: " . filesize($file));
                 header("Content-Type: text/plain");
                 flush();
-                $fp = fopen($file, "r");
+                $fp = fopen($file, "r") or json_response(array("status" => "unable to read cryptofile", "fileid" => $params["fileid"]));;
                 while (!feof($fp)) {
                     echo fread($fp, 65536);
                     flush(); // for large downloads
